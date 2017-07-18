@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"github.com/pkg/errors"
 )
 
 type ReceivedFile struct {
@@ -18,10 +19,15 @@ type ReceivedFile struct {
 }
 
 func NewTFTPReceiver(publicAddr string) *TFTPReceiver {
+
+	// Create the error channel
+	errChannel := make(chan error, 3)
+
 	return &TFTPReceiver{
 		PublicAddr: publicAddr,
 		recvHooks:  make(map[string]chan ReceivedFile),
 		mutex:      &sync.Mutex{},
+		errChannel: errChannel,
 	}
 }
 
@@ -30,6 +36,11 @@ type TFTPReceiver struct {
 	server     *tftp.Server
 	recvHooks  map[string]chan ReceivedFile
 	mutex      *sync.Mutex
+	errChannel chan error
+}
+
+func (r *TFTPReceiver) GetErrorChannel() chan error {
+	return r.errChannel
 }
 
 func (r *TFTPReceiver) ExpectFile(name string, ch chan ReceivedFile) {
@@ -45,13 +56,12 @@ func (r *TFTPReceiver) Run() {
 
 	log.Print("Starting TFTP Server...")
 
-	go func(server *tftp.Server) {
+	go func(server *tftp.Server, errChannel chan error) {
 		err := server.ListenAndServe(":69") // blocks until s.Shutdown() is called
 		if err != nil {
-			fmt.Fprintf(os.Stdout, "server: %v\n", err)
-			os.Exit(1)
+			errChannel <- errors.Errorf("TFTP Server: %s", err)
 		}
-	}(r.server)
+	}(r.server, r.errChannel)
 }
 
 func (r *TFTPReceiver) Stop() {

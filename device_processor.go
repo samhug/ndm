@@ -1,25 +1,29 @@
 package main
 
 import (
-	//"bufio"
 	"encoding/json"
 	"fmt"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/go-errors/errors"
 	"github.com/hashicorp/go-uuid"
 	"github.com/robertkrimen/otto"
-	"github.com/samuelhug/cfgbak/config"
+	"github.com/samuelhug/cfgbak/auth"
 	"github.com/samuelhug/gexpect"
 	"golang.org/x/crypto/ssh"
 	"io"
 	"io/ioutil"
+	"log"
+	"os"
 	"path"
 	"time"
 )
 
-func NewDeviceProcessor(device *config.Device, configDir string) *DeviceProcessor {
+// NewDeviceProcessor: Initializes a new DeviceProcessor object
+func NewDeviceProcessor(device *Device, authProviders *auth.ProviderPool, backupDir string) *DeviceProcessor {
 	return &DeviceProcessor{
-		device:    device,
-		configDir: configDir,
+		device:        device,
+		authProviders: authProviders,
+		configDir:     backupDir,
 	}
 }
 
@@ -37,28 +41,26 @@ func (ctx *vmCtx) Serialize() (string, error) {
 }
 
 type DeviceProcessor struct {
-	device    *config.Device
-	configDir string
-	vm        *otto.Otto
+	authProviders *auth.ProviderPool
+	device        *Device
+	configDir     string
+	vm            *otto.Otto
 }
 
 func (t *DeviceProcessor) connect() (*ssh.Client, error) {
 
-	sshClientConfig := &ssh.ClientConfig{
-		User: t.device.Auth.Username,
-		Auth: []ssh.AuthMethod{
-			ssh.Password(t.device.Auth.Password),
-		},
-
-		// Enable the use of this insecure cypher so we can interact with crappy legacy devices
-		Config: ssh.Config{
-			Ciphers: []string{"3des-cbc"},
-		},
+	sshClientConfig, err := t.device.Auth.GetSSHClientConfig()
+	if err != nil {
+		return nil, errors.Errorf("Failed to construct SSHClientConfig from Auth(%s): %s",
+			t.device.AuthPath, err)
 	}
 
-	client, err := ssh.Dial("tcp", t.device.Addr, sshClientConfig)
+	// Enable the use of this insecure cypher so we can interact with crappy legacy devices
+	sshClientConfig.Config.Ciphers = append(sshClientConfig.Config.Ciphers, "3des-cbc")
+
+	client, err := ssh.Dial("tcp", t.device.Address, sshClientConfig)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to dial: %s", err)
+		return nil, errors.Errorf("Failed to connect to Device(%s): %s", t.device.Name, err)
 	}
 
 	return client, nil
@@ -68,17 +70,17 @@ func (t *DeviceProcessor) startShell(client *ssh.Client) (*ssh.Session, io.Write
 
 	session, err := client.NewSession()
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Failed to create session: %s", err)
+		return nil, nil, nil, errors.Errorf("Failed to create terminal session via SSH: %s", err)
 	}
 
 	stdOut, err := session.StdoutPipe()
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Failed to attach to Stdout: %s", err)
+		return nil, nil, nil, errors.Errorf("Failed to attach to Stdout: %s", err)
 	}
 
 	stdIn, err := session.StdinPipe()
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Failed to attach to Stdin: %s", err)
+		return nil, nil, nil, errors.Errorf("Failed to attach to Stdin: %s", err)
 	}
 
 	modes := ssh.TerminalModes{
@@ -89,12 +91,12 @@ func (t *DeviceProcessor) startShell(client *ssh.Client) (*ssh.Session, io.Write
 
 	err = session.RequestPty("xterm", 0, 200, modes)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Request for pty failed: %s", err)
+		return nil, nil, nil, errors.Errorf("Request for pty failed: %s", err)
 	}
 
 	err = session.Shell()
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Request for shell failed: %s", err)
+		return nil, nil, nil, errors.Errorf("Request for shell failed: %s", err)
 	}
 
 	return session, stdIn, stdOut, nil
@@ -115,8 +117,24 @@ func (t *DeviceProcessor) initVM(stdIn io.WriteCloser, stdOut io.Reader, ctx vmC
 
 	// Initialize the Expect library
 	if err = ottoExpect(vm, expect); err != nil {
-		return nil, fmt.Errorf("Failed to initialize the expect library: %s", err)
+		return nil, errors.Errorf("Failed to initialize the expect library: %s", err)
 	}
+
+	err = vm.Set("getAuthAttr", func(call otto.FunctionCall) otto.Value {
+		attrName := call.Argument(0).String()
+
+		val, err := t.device.Auth.GetAttribute(attrName)
+		if err != nil {
+			return vm.MakeCustomError("AttrError",fmt.Sprintf("Unable to find auth attribute '%s': %s", attrName, err))
+		}
+
+		ottoVal, err := vm.ToValue(val)
+		if err != nil {
+			return vm.MakeCustomError("TypeError","Unable to convert AuthAttr to a string")
+		}
+
+		return ottoVal
+	})
 
 	// Set the context variables
 	if err = vm.Set("device", t.device); err != nil {
@@ -125,37 +143,62 @@ func (t *DeviceProcessor) initVM(stdIn io.WriteCloser, stdOut io.Reader, ctx vmC
 
 	ctxRaw, err := ctx.Serialize()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to serialize context variable: %s", err)
+		return nil, errors.Errorf("Failed to serialize context variable: %s", err)
 	}
 	if err = vm.Set("_ctxRaw", ctxRaw); err != nil {
-		return nil, fmt.Errorf("Failed to set _ctxRaw variable: %s", err)
+		return nil, errors.Errorf("Failed to set _ctxRaw variable: %s", err)
 	}
 	_, err = vm.Run(`ctx = JSON.parse(_ctxRaw);`)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to unserialize context variable: %s", err)
+		return nil, errors.Errorf("Failed to unserialize context variable: %s", err)
 	}
 
 	return vm, nil
 }
 
-func (t *DeviceProcessor) saveFile(file *ReceivedFile) error {
+func (t *DeviceProcessor) saveFile(backupTarget *DeviceClassTarget, file *ReceivedFile) error {
 
-	dstFile := path.Join(t.configDir, fmt.Sprintf("%s.conf", t.device.Name))
+	dstPath := path.Join(t.configDir, t.device.Name, fmt.Sprintf("%s.conf", backupTarget.Name))
 
-	err := ioutil.WriteFile(dstFile, file.Data.Bytes(), 0644)
+	dirPath, _ := path.Split(dstPath)
+
+	// Create the parent directory structure if needed
+	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+		err = os.MkdirAll(dirPath, os.ModePerm)
+		if err != nil {
+			return errors.Errorf("Parent directory '%s' doesn't exist and an error occurred while trying to create it: %s", dirPath, err)
+		}
+	}
+
+	err := ioutil.WriteFile(dstPath, file.Data.Bytes(), 0644)
 	if err != nil {
-		return fmt.Errorf("File to save received file: %s", err)
+		return errors.Errorf("Unable to write to file '%s': %s", dstPath, err)
 	}
 
 	return nil
 }
 
 func (t *DeviceProcessor) Process(reciever *TFTPReceiver) error {
+	for target_name, _ := range t.device.Class.Targets {
+		log.Printf("Processing backup target '%s':'%s'", t.device.Name, target_name)
+
+		err := t.ProcessTarget(target_name, reciever)
+		if err != nil {
+			return errors.Errorf("target %s: %s", target_name, err)
+		}
+	}
+
+	return nil
+}
+
+func (t *DeviceProcessor) ProcessTarget(target_name string, reciever *TFTPReceiver) error {
+
+	backupTarget := t.device.Class.Targets[target_name]
 
 	// Generate a unique filename to use during the TFTP upload
 	filename, err := uuid.GenerateUUID()
 	if err != nil {
-		return fmt.Errorf("Device Processing Error [%s]: Failed to generate UUID: %s", t.device.Name, err)
+		return errors.Errorf("Failed to generate UUID: %s", err)
 	}
 
 	// Create channel to recieve the file on
@@ -167,12 +210,12 @@ func (t *DeviceProcessor) Process(reciever *TFTPReceiver) error {
 	// Connect to the device
 	client, err := t.connect()
 	if err != nil {
-		return fmt.Errorf("Device Processing Error [%s]: Unable to connect: %s", t.device.Name, err)
+		return errors.Errorf("Unable to connect: %s", err)
 	}
 
 	session, stdIn, stdOut, err := t.startShell(client)
 	if err != nil {
-		return fmt.Errorf("Device Processing Error [%s]: %s", t.device.Name, err)
+		return errors.Errorf("Failed to start shell: %s", err)
 	}
 	defer session.Close()
 
@@ -183,30 +226,27 @@ func (t *DeviceProcessor) Process(reciever *TFTPReceiver) error {
 
 	vm, err := t.initVM(stdIn, stdOut, ctx)
 	if err != nil {
-		return fmt.Errorf("Device Processing Error [%s]: Failed to init VM: %s", t.device.Name, err)
+		return errors.Errorf("Failed to init JavaScript VM: %s", err)
 	}
 
-	//TODO
-	//time.Sleep(5*time.Second)
-
-	val, err := vm.Run(t.device.Class.Script)
+	_, err = vm.Run(backupTarget.Macro)
 	if err != nil {
-		return fmt.Errorf("Device Processing Error [%s]: VM Runtime Error: %s", t.device.Name, err)
+		return errors.Errorf("JavaScript VM Runtime Error: %s", err)
 	}
-
-	_ = val
 
 	var recvdFile ReceivedFile
 
 	// Wait for a maximum of 10 seconds for the file on the receive channel
 	select {
+	case err = <-reciever.GetErrorChannel():
+		log.Printf("TFTP Receiver error: %s\n", err)
 	case recvdFile = <-recvChan:
 	case <-time.After(10 * time.Second):
-		return fmt.Errorf("Device Processing Error [%s]: Timed out waiting to receive file", t.device.Name)
+		return errors.Errorf("Timed out waiting to receive file over TFTP")
 	}
 
 	// Save the received file
-	if err = t.saveFile(&recvdFile); err != nil {
+	if err = t.saveFile(backupTarget, &recvdFile); err != nil {
 		return err
 	}
 

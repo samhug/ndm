@@ -2,29 +2,52 @@ package config
 
 import (
 	//"strings"
-	"github.com/hashicorp/hcl/hcl/ast"
-	"github.com/stretchr/testify/assert"
+	"github.com/samuelhug/cfgbak/config/utilities"
+	"github.com/stretchr/testify/require"
 	"testing"
-	//"github.com/stretchr/testify/suite"
 )
 
 func TestPreferencesBasic(t *testing.T) {
 
-	buf := `
+	config_str := `
 preferences {
 	backup_dir = "./router-configs/"
 	host_ip = "10.10.10.10"
 }
 	`
-	c, err := loadStringHcl(buf)
-	assert.NoError(t, err)
+	c, err := utilities.LoadStringHcl(config_str)
+	require.NoError(t, err)
 
-	list, ok := c.Root.Node.(*ast.ObjectList)
-	assert.True(t, ok)
+	list, ok := utilities.GetObjectList(c)
+	require.True(t, ok)
 
-	result, err := loadPreferencesHcl(list.Filter("preferences"))
-	assert.NoError(t, err)
+	result := &PreferencesConfig{}
 
-	assert.Equal(t, &Preferences{BackupDir: "./router-configs/", HostIP:"10.10.10.10"}, result)
+	err = loadPreferencesHcl(list.Filter("preferences"), result)
+	require.NoError(t, err)
+
+	require.Equal(t, &PreferencesConfig{BackupDir: "./router-configs/", HostIP: "10.10.10.10"}, result)
+
+}
+
+func TestPreferences_NoHostIP(t *testing.T) {
+
+	config_str := `
+preferences {
+	backup_dir = "./router-configs/"
+}
+	`
+	c, err := utilities.LoadStringHcl(config_str)
+	require.NoError(t, err)
+
+	list, ok := utilities.GetObjectList(c)
+	require.True(t, ok)
+
+	result := &PreferencesConfig{}
+
+	err = loadPreferencesHcl(list.Filter("preferences"), result)
+	require.NoError(t, err)
+
+	require.Equal(t, &PreferencesConfig{BackupDir: "./router-configs/", HostIP: ""}, result)
 
 }

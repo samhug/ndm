@@ -1,49 +1,54 @@
 package config
 
 import (
-	"github.com/hashicorp/hcl/hcl/ast"
-	"github.com/stretchr/testify/assert"
+	"github.com/samuelhug/cfgbak/config/auth_providers"
+	"github.com/samuelhug/cfgbak/config/utilities"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
-func TestDeviceBasic(t *testing.T) {
+func TestParseDeviceAuthStr(t *testing.T) {
+	var provider, path string
+	var err error
 
-	buf := `
-
-auth "test_auth" {
-	username = "a"
-	password = "b"
+	provider, path, err = parseDeviceAuthStr("a:b")
+	require.NoError(t, err)
+	require.Equal(t, "a", provider)
+	require.Equal(t, "b", path)
 }
 
-device_class "test_class" {
-	script = "c"
-}
+func TestDeviceConfig_Basic(t *testing.T) {
 
-// ===============
-
-device "abc" {
-	class = "test_class"
-	addr = "ghi"
-	auth = "test_auth"
+	config_str := `
+device "deviceClassA" "deviceA" {
+	address = "10.10.10.10:22"
+	auth = "providerA:auth1"
 }
 	`
-	c, err := loadStringHcl(buf)
-	assert.NoError(t, err)
+	c, err := utilities.LoadStringHcl(config_str)
+	require.NoError(t, err)
 
-	list, ok := c.Root.Node.(*ast.ObjectList)
-	assert.True(t, ok)
+	list, ok := utilities.GetObjectList(c)
+	require.True(t, ok)
 
-	auths, err := loadAuthsHcl(list.Filter("auth"))
-	assert.NoError(t, err)
+	providers := map[string]auth_providers.AuthProviderConfig{
+		"providerA": &auth_providers.StaticAuthProviderConfig{Auths: map[string]*auth_providers.StaticAuthConfig{
+			"auth1": {Username: "bob", Password: "secret"},
+		}},
+	}
+	deviceClasses := map[string]*DeviceClassConfig{
+		"deviceClassA": {BackupTargets: map[string]*BackupTargetConfig{
+			"targetA": {Macro: ""},
+		}},
+	}
 
-	deviceClasses, err := loadDeviceClassesHcl(list.Filter("device_class"))
-	assert.NoError(t, err)
+	results := map[string]*DeviceConfig{}
 
-	result, err := loadDevicesHcl(list.Filter("device"), deviceClasses, auths)
-	assert.NoError(t, err)
+	err = loadDeviceConfigsHcl(list.Filter("device"), &results, &deviceClasses, &providers)
+	require.NoError(t, err)
 
-	o1 := Device{Name: "abc", Class: &DeviceClass{Name: "test_class", Script: "c"}, Auth: &Auth{Name: "test_auth", Username: "a", Password: "b"}, Addr: "ghi"}
-
-	expected := map[string]*Device{"abc": &o1}
-	assert.Equal(t, expected, result)
+	expected := map[string]*DeviceConfig{
+		"deviceA": {Name: "deviceA", ClassName: "deviceClassA", AuthProvider: "providerA", AuthPath: "auth1", Address: "10.10.10.10:22"},
+	}
+	require.Equal(t, expected, results)
 }
