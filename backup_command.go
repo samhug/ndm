@@ -9,6 +9,7 @@ import (
 	"github.com/samuelhug/cfgbak/auth"
 	"github.com/samuelhug/cfgbak/config"
 	"github.com/samuelhug/cfgbak/config/auth_providers"
+	"github.com/segmentio/go-prompt"
 	"log"
 	"strings"
 )
@@ -37,6 +38,10 @@ func initAuthProviderPool(providersCfg map[string]auth_providers.AuthProviderCon
 			provider = static_provider
 		case "keepass":
 			cfg := providerCfg.(*auth_providers.KeePassAuthProviderConfig)
+			if cfg.UnlockCredential == "" {
+				fmt.Printf("Please provide the unlock credential for the KeePass database '%s'\n", cfg.DbPath)
+				cfg.UnlockCredential = prompt.PasswordMasked("Password: ")
+			}
 			provider, err = auth.NewKeePassProvider(cfg.DbPath, cfg.UnlockCredential)
 			if err != nil {
 				return nil, errors.Errorf("Unable to initialise KeePassAuthProvider(%s): %s", providerName, err)

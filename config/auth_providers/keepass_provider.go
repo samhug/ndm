@@ -32,7 +32,9 @@ func loadKeePassAuthProviderConfigHcl(list *ast.ObjectList, providers *map[strin
 	for _, item := range list.Items {
 		name := item.Keys[0].Token.Value().(string)
 
-		var result KeePassAuthProviderConfig
+		var result = KeePassAuthProviderConfig{
+			UnlockCredential: "",
+		}
 		var metadata mapstructure.Metadata
 
 		// Decode the parse tree into an object map
@@ -54,7 +56,7 @@ func loadKeePassAuthProviderConfigHcl(list *ast.ObjectList, providers *map[strin
 			errorAccum = multierror.Append(errorAccum, errors.Errorf("auth_provider 'keepass' '%s': %s", name, err))
 		}
 
-		if err = utilities.CheckForRequiredFields(&metadata, []string{"db_path", "unlock_credential"}); err != nil {
+		if err = utilities.CheckForRequiredFields(&metadata, []string{"db_path"}); err != nil {
 			errorAccum = multierror.Append(errorAccum, errors.Errorf("auth_provider 'keepass' '%s': %s", name, err))
 		}
 
