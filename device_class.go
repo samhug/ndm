@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/go-errors/errors"
 	"github.com/robertkrimen/otto"
-	"github.com/samuelhug/cfgbak/config"
+	"github.com/samuelhug/ndm/config"
 )
 
 func initDeviceClassTargets(deviceClassTargetCfgs map[string]*config.BackupTargetConfig) (map[string]*DeviceClassTarget, error) {

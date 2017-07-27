@@ -1,4 +1,4 @@
-# cfgbak
+# ndm
 
 ### About
 Automates the process of backing up network device configurations. This tool reads device information from a
@@ -16,13 +16,13 @@ go get .
 go build
 
 # Copy the example configuration
-cp config.example.conf config.conf
+cp config.example.hcl config.hcl
 
 # Edit as needed
-vim config.conf
+vim config.hcl
 
 # Run the backup
-./cfgbak --config config.conf
+./ndm backup --config config.hcl
 ```
 
 ## Configuration

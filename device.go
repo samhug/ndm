@@ -2,9 +2,9 @@ package main
 
 import (
 	"github.com/go-errors/errors"
-	"github.com/samuelhug/cfgbak/config"
+	"github.com/samuelhug/ndm/auth"
+	"github.com/samuelhug/ndm/config"
 	"path"
-	"github.com/samuelhug/cfgbak/auth"
 )
 
 func initDevices(deviceGroupCfgs map[string]*config.DeviceGroupConfig, deviceClasses map[string]*DeviceClass, authProviders *auth.ProviderPool) (map[string]*Device, error) {

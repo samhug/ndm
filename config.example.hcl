@@ -1,4 +1,4 @@
-include "config.device_classes.conf" {}
+include "config.device_classes.hcl" {}
 
 preferences {
     // The destination directory for all configurations

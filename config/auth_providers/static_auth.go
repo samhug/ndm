@@ -6,14 +6,14 @@ import (
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
 	"github.com/mitchellh/mapstructure"
-	"github.com/samuelhug/cfgbak/config/utilities"
+	"github.com/samuelhug/ndm/config/utilities"
 )
 
 // StaticAuthConfig represents a auth configuration block within a auth_provider "static" "..." {} block.
 type StaticAuthConfig struct {
-	Username   string `mapstructure:"username,"`
-	Password   string `mapstructure:"password,"`
-	Attributes map[string]string  `mapstructure:"attributes,"`
+	Username   string            `mapstructure:"username,"`
+	Password   string            `mapstructure:"password,"`
+	Attributes map[string]string `mapstructure:"attributes,"`
 }
 
 func loadStaticAuthsHcl(list *ast.ObjectList) (map[string]*StaticAuthConfig, error) {
@@ -43,10 +43,10 @@ func loadStaticAuthsHcl(list *ast.ObjectList) (map[string]*StaticAuthConfig, err
 		}
 
 		decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
-			Metadata: &metadata,
-			Result:   &result,
+			Metadata:         &metadata,
+			Result:           &result,
 			WeaklyTypedInput: true, // Needed to for attributes
-			ErrorUnused: true,
+			ErrorUnused:      true,
 		})
 		if err != nil {
 			return nil, errors.New("Failed constructing Decoder")

@@ -6,9 +6,9 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/mitchellh/cli"
 	"github.com/ryanuber/go-glob"
-	"github.com/samuelhug/cfgbak/auth"
-	"github.com/samuelhug/cfgbak/config"
-	"github.com/samuelhug/cfgbak/config/auth_providers"
+	"github.com/samuelhug/ndm/auth"
+	"github.com/samuelhug/ndm/config"
+	"github.com/samuelhug/ndm/config/auth_providers"
 	"github.com/segmentio/go-prompt"
 	"log"
 	"strings"
@@ -40,7 +40,7 @@ func initAuthProviderPool(providersCfg map[string]auth_providers.AuthProviderCon
 			cfg := providerCfg.(*auth_providers.KeePassAuthProviderConfig)
 			if cfg.UnlockCredential == "" {
 				fmt.Printf("Please provide the unlock credential for the KeePass database '%s'\n", cfg.DbPath)
-				cfg.UnlockCredential = prompt.PasswordMasked("Password: ")
+				cfg.UnlockCredential = prompt.PasswordMasked("Password")
 			}
 			provider, err = auth.NewKeePassProvider(cfg.DbPath, cfg.UnlockCredential)
 			if err != nil {
@@ -65,7 +65,7 @@ func (t *BackupCommand) Run(args []string) int {
 	var cfgPath string
 
 	cmdFlags := flag.NewFlagSet(cmdname, flag.ContinueOnError)
-	cmdFlags.StringVar(&cfgPath, "config", "config.conf", "path")
+	cmdFlags.StringVar(&cfgPath, "config", "config.hcl", "path")
 	cmdFlags.Usage = func() { fmt.Printf(t.Help()) }
 	if err := cmdFlags.Parse(args); err != nil {
 		return 1
@@ -91,12 +91,13 @@ func (t *BackupCommand) Run(args []string) int {
 
 	hostIP := cfg.Preferences.HostIP
 	if hostIP == "" {
+		log.Println("No external IP was specified, please choose an IP address for the TFTP server to listen on")
 		hostIP, err = getExternalIPAddr()
 		if err != nil {
 			log.Printf("Unable to detect external interface IP address and no HostIP was specified: %s\n", err)
 			return 1
 		}
-		log.Printf("No host IP was specified, auto detected %s\n", hostIP)
+		log.Printf("IP %s was selected\n", hostIP)
 	}
 
 	authProviderPool, err := initAuthProviderPool(cfg.AuthProviders)
@@ -155,7 +156,7 @@ func filterDevices(devices map[string]*Device, filter string) map[string]*Device
 
 func (t *BackupCommand) Help() string {
 	helpText := `
-Usage: cfgbak backup [options] [device-filter]
+Usage: ndm backup [options] [device-filter]
 	Backs up the configuration for device matching the filter. If no filter is specified,
 	will backup all devices.
 Options:

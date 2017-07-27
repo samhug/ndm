@@ -7,8 +7,8 @@ import (
 )
 
 type StaticAuth struct {
-	username string
-	password string
+	username   string
+	password   string
 	attributes map[string]string
 }
 

@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/pin/tftp"
+	"github.com/pkg/errors"
 	"io"
 	"log"
 	"os"
 	"strings"
 	"sync"
 	"time"
-	"github.com/pkg/errors"
 )
 
 type ReceivedFile struct {

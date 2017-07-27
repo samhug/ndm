@@ -3,8 +3,8 @@ package config
 import (
 	"errors"
 	"github.com/hashicorp/hcl/hcl/ast"
-	"github.com/samuelhug/cfgbak/config/auth_providers"
-	"github.com/samuelhug/cfgbak/config/utilities"
+	"github.com/samuelhug/ndm/config/auth_providers"
+	"github.com/samuelhug/ndm/config/utilities"
 	"path"
 )
 
@@ -15,8 +15,8 @@ func getConfigDefaults() *Config {
 		Preferences:   &PreferencesConfig{BackupDir: "", HostIP: ""},
 		AuthProviders: map[string]auth_providers.AuthProviderConfig{},
 		DeviceClasses: map[string]*DeviceClassConfig{},
-		DeviceGroups:  map[string]*DeviceGroupConfig{
-			"": { Devices: map[string]*DeviceConfig{}},
+		DeviceGroups: map[string]*DeviceGroupConfig{
+			"": {Devices: map[string]*DeviceConfig{}},
 		},
 	}
 }

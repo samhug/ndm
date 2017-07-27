@@ -3,7 +3,7 @@ package auth
 import (
 	//"fmt"
 	"github.com/go-errors/errors"
-	//"github.com/samuelhug/cfgbak/config"
+	//"github.com/samuelhug/ndm/config"
 )
 
 // NewProviderPool: Constructs a new ProviderPool

@@ -2,7 +2,7 @@ package config
 
 import (
 	//"strings"
-	"github.com/samuelhug/cfgbak/config/utilities"
+	"github.com/samuelhug/ndm/config/utilities"
 	"github.com/stretchr/testify/require"
 	"testing"
 )

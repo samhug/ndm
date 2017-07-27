@@ -7,8 +7,8 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/hashicorp/go-uuid"
 	"github.com/robertkrimen/otto"
-	"github.com/samuelhug/cfgbak/auth"
 	"github.com/samuelhug/gexpect"
+	"github.com/samuelhug/ndm/auth"
 	"golang.org/x/crypto/ssh"
 	"io"
 	"io/ioutil"
@@ -125,12 +125,12 @@ func (t *DeviceProcessor) initVM(stdIn io.WriteCloser, stdOut io.Reader, ctx vmC
 
 		val, err := t.device.Auth.GetAttribute(attrName)
 		if err != nil {
-			return vm.MakeCustomError("AttrError",fmt.Sprintf("Unable to find auth attribute '%s': %s", attrName, err))
+			return vm.MakeCustomError("AttrError", fmt.Sprintf("Unable to find auth attribute '%s': %s", attrName, err))
 		}
 
 		ottoVal, err := vm.ToValue(val)
 		if err != nil {
-			return vm.MakeCustomError("TypeError","Unable to convert AuthAttr to a string")
+			return vm.MakeCustomError("TypeError", "Unable to convert AuthAttr to a string")
 		}
 
 		return ottoVal

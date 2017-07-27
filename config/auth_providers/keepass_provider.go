@@ -6,7 +6,7 @@ import (
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
 	"github.com/mitchellh/mapstructure"
-	"github.com/samuelhug/cfgbak/config/utilities"
+	"github.com/samuelhug/ndm/config/utilities"
 )
 
 type KeePassAuthProviderConfig struct {

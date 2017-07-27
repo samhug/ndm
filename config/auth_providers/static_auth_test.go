@@ -1,7 +1,7 @@
 package auth_providers
 
 import (
-	"github.com/samuelhug/cfgbak/config/utilities"
+	"github.com/samuelhug/ndm/config/utilities"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
@@ -33,7 +33,7 @@ auth "jkl" {
 
 	expected := map[string]*StaticAuthConfig{
 		"abc": {Username: "def", Password: "ghi", Attributes: map[string]string{}},
-		"jkl": {Username: "mno", Password: "pqr", Attributes: map[string]string{"enable_password":"test"}},
+		"jkl": {Username: "mno", Password: "pqr", Attributes: map[string]string{"enable_password": "test"}},
 	}
 	require.Equal(t, expected, result)
 }
