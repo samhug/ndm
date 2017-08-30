@@ -1,5 +1,7 @@
 # ndm
 
+[![Build Status](https://travis-ci.org/samuelhug/ndm.svg?branch=master)](https://travis-ci.org/samuelhug/ndm)
+
 ### About
 Automates the process of backing up network device configurations. This tool reads device information from a
 configuration file, connects to each device via SSH, and initiates an file upload back to a built-in TFTP server.
