@@ -1,1 +1,24 @@
 language: go
+go: 1.9
+install:
+before_deploy:
+- GOOS=linux   GOARCH=amd64 go build -o ndm_linux_amd64
+- GOOS=linux   GOARCH=386   go build -o ndm_linux_386
+- GOOS=linux   GOARCH=arm   go build -o ndm_linux_arm
+- GOOS=darwin  GOARCH=amd64 go build -o ndm_darwin_amd64
+- GOOS=windows GOARCH=amd64 go build -o ndm_windows_amd64.exe
+- GOOS=windows GOARCH=386   go build -o ndm_windows_386.exe
+deploy:
+  provider: releases
+  api_key:
+    secure: cIS7zkJ7lXhunywJFuHh+Tut474iDQHC+0zBt0/vim3l80y2grPnVWL3ijtvW2cCsp/NzOD5IOSoIEIvhvspJhltXhRnScDhAjYjYbV4yyOkTyf9ZUyeFzzqpf9iV/Ly5cUo63uCMlSAaOwnGbSq8NokciLfySD/Bz3KrSK86ABJsynL3nHC1+pcg3Kjz4l7Gvs8nKMJ7XWJ9eQ0PJ6I9vi4Xr5fs85JrvBWz0Y67LQWNY3VGtaQsuBTukXhV0t41KpuTgf0qfNrzwf/rQprNMQ6z5Jn9GFWV6PWTqPxglxINgI7821F5IxZ8zJWzsr77SOrBw4oLQzCZTUtZeCRJpTAhLikc8iNLdR3xFVIoJEuYm993ye7rM/LFpDc3S2gLc2lJyDtzmDvWCqsFec3z8TfQ7r1LhDRF6N7ZMZ5/IAlEEkjt1sXFukAz7ejd3vsnHRM5NvxzK0Eji2rNmywqrDTm/iGNnsBJtdaKsuoIXU1Ak/qHrFR7qQgWY1UMOT7dk5MhozS2TBfwNuvW7yinjp1NzzXcGw8IiesyqmHDBWKooBeD4rqyLCxlhhF53LH4Ad+q/vre8V2ycJA1SMSG0yjnkMJhkg7bAoCP7HlWsa59yp/VrKEZKzB96yEjtQ6zM/DhdJHVlzFtjgXttaAIVpDub0z/9P/ezjmDdTA3YY=
+  file:
+  - ndm_linux_amd64
+  - ndm_linux_386
+  - ndm_linux_arm
+  - ndm_darwin_amd64
+  - ndm_windows_amd64.exe
+  - ndm_windows_386.exe
+  on:
+    tags: true
+    repo: samuelhug/ndm
