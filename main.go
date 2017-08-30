@@ -9,12 +9,12 @@ import (
 
 const (
 	CMD_NAME = "ndm"
-	VERSION  = "0.0.2"
+	VERSION  = "v0.1.0"
 	AUTHOR   = "Sam Hug"
 )
 
 func printHeader() {
-	fmt.Printf("%s v%s by %s\n", CMD_NAME, VERSION, AUTHOR)
+	fmt.Printf("%s %s by %s\n", CMD_NAME, VERSION, AUTHOR)
 }
 
 func main() {
