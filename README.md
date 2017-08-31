@@ -4,18 +4,20 @@
 
 ### About
 Automates the process of backing up network device configurations. This tool reads device information from a
-configuration file, connects to each device via SSH, and initiates an file upload back to a built-in TFTP server.
+configuration file, connects to each device via SSH, and initiates a file upload back to a built-in TFTP server.
 
 Device classes are configured with an expect macro written in Javascript which is executed at runtime against an SSH
-session. Support for additional device types can easily be added by writing a expect macro.
+session. Support for additional device types can easily be added by writing a new expect macro.
 
-The sample config has example expect macros for Cisco ISRs, HP switches, and the Ubiquiti EdgeRouter.
+The sample config has example expect macros for Cisco ISRs, Adtran routers, HP switches, and the Ubiquiti EdgeRouter.
 
 ### Quick Example
 ```
 # Aquire & build the tool
-go get .
+git clone https://github.com/samuelhug/ndm.git
+cd ndm
 go build
+go test
 
 # Copy the example configuration
 cp config.example.hcl config.hcl
@@ -43,9 +45,9 @@ preferences {
 ```
 
 ### Device Classes
-The `device_class` block defines a device class that can be attached to multiple devices. Inside the
-`device_class` block you can specify multiple `backup_target`s. `cfgback` will open an SSH session and evaluate the
-defined expect `macro` for each `backup_target` defined. The `macro` is executed in a JavaScript VM at runtime. 
+The `device_class` block defines a device class that can be associated with multiple devices. Inside the
+`device_class` block you can specify multiple `backup_target`s. The `ndm` tool will open an SSH session and evaluate the
+defined expect `macro` for each `backup_target`. The `macro` is executed in a builtin JavaScript VM at runtime.
 ```hcl
 // Sample device class for backing up Cisco ISR routers
 device_class "cisco_isr" {
@@ -73,7 +75,7 @@ The `auth_provider` block defines an authentication provider that will provide d
 runtime. There are currently two supported `auto_provider` types available.   
 
 #### Static Provider
-The `static` `auto_provider` uses credentials that are stored plaintext in the configuration file. You can specify
+The `static` `auth_provider` uses credentials that are stored plaintext in the configuration file. You can specify
 additional options using the `attributes` block. Fields defined in the `attributes` block can be retrieved at runtime in
 a JavaScript macro using the `getAuthAttr(field_name)` function.
 ```hcl
@@ -91,8 +93,8 @@ auth_provider "static" "my_auth" {
 }
 ```
 #### KeePass Provider
-The `keepass` `auto_provider` uses credentials that are stored in a KeePass database. Currently the `unlock_credential`
-is still stored in plaintext though.
+The `keepass` `auth_provider` uses credentials that are stored in a KeePass database. The `unlock_credential`
+is stored in plaintext, but you can omit the `unlock_credential` field you will be prompted for it at runtime.
 ```hcl
 auth_provider "keepass" "my_auth_db" {
     db_path = "./my_secrets.kdbx"
@@ -101,8 +103,8 @@ auth_provider "keepass" "my_auth_db" {
 ```
 
 ### Devices
-The `device` block defines a specific that we want to backup. We specify a `device_class`, in this case
-`cisco_isr`, which associates the `device_class`'s `backup_target`'s with the `device`
+The `device` block defines a specific device that we want to backup. In the example below we specify a `device_class`, in this case
+`cisco_isr`, which associates the `device_class`'s `backup_target`s with the `device`
 ```hcl
 device "cisco_isr" "test_router_1" {
     address = "192.168.1.1:22"
