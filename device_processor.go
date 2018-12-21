@@ -236,12 +236,12 @@ func (t *DeviceProcessor) ProcessTarget(target_name string, reciever *TFTPReceiv
 
 	var recvdFile ReceivedFile
 
-	// Wait for a maximum of 10 seconds for the file on the receive channel
+	// Wait for a maximum of 60 seconds for the file on the receive channel
 	select {
 	case err = <-reciever.GetErrorChannel():
 		log.Printf("TFTP Receiver error: %s\n", err)
 	case recvdFile = <-recvChan:
-	case <-time.After(10 * time.Second):
+	case <-time.After(60 * time.Second):
 		return errors.Errorf("Timed out waiting to receive file over TFTP")
 	}
 
