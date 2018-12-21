@@ -1,5 +1,6 @@
 language: go
-go: 1.9
+go:
+- "1.11.x"
 install:
 before_deploy:
 - GOOS=linux   GOARCH=amd64 go build -o ndm_linux_amd64
