@@ -1,23 +1,33 @@
-package main
+package cmd
 
 import (
-	"flag"
 	"fmt"
 	"github.com/go-errors/errors"
-	"github.com/mitchellh/cli"
 	"github.com/ryanuber/go-glob"
-	"github.com/samuelhug/ndm/auth"
-	"github.com/samuelhug/ndm/config"
-	"github.com/samuelhug/ndm/config/auth_providers"
+	"github.com/samhug/ndm/auth"
+	"github.com/samhug/ndm/config"
+	"github.com/samhug/ndm/config/auth_providers"
+	"github.com/samhug/ndm/device_processor"
+	"github.com/samhug/ndm/devices"
 	"github.com/segmentio/go-prompt"
+	"github.com/spf13/cobra"
 	"log"
-	"strings"
+	"net"
 )
 
-type BackupCommand struct {
+func init() {
+	rootCmd.AddCommand(backupCmd)
+
+	backupCmd.Flags().StringVar(&cfgPath, "config", "config.hcl", "config file path")
 }
 
-var _ cli.Command = &BackupCommand{}
+var cfgPath string
+
+var backupCmd = &cobra.Command{
+	Use:   "backup",
+	Short: "Backup device configs",
+	Run:   backupMain,
+}
 
 func initAuthProviderPool(providersCfg map[string]auth_providers.AuthProviderConfig) (*auth.ProviderPool, error) {
 	pool := auth.NewProviderPool()
@@ -58,25 +68,7 @@ func initAuthProviderPool(providersCfg map[string]auth_providers.AuthProviderCon
 	return pool, nil
 }
 
-func (t *BackupCommand) Run(args []string) int {
-
-	cmdname := "backup"
-
-	var cfgPath string
-
-	cmdFlags := flag.NewFlagSet(cmdname, flag.ContinueOnError)
-	cmdFlags.StringVar(&cfgPath, "config", "config.hcl", "path")
-	cmdFlags.Usage = func() { fmt.Printf(t.Help()) }
-	if err := cmdFlags.Parse(args); err != nil {
-		return 1
-	}
-	args = cmdFlags.Args()
-
-	if len(args) > 1 {
-		log.Print("Too many command line arguments. Configuration path expected.")
-		fmt.Printf(t.Help())
-		return 1
-	}
+func backupMain(cmd *cobra.Command, args []string) {
 
 	deviceFilter := "*"
 	if len(args) > 0 {
@@ -85,8 +77,7 @@ func (t *BackupCommand) Run(args []string) int {
 
 	cfg, err := config.LoadFile(cfgPath)
 	if err != nil {
-		log.Printf("Unable to load configuration: %s\n", err)
-		return 1
+		log.Fatalln("Unable to load configuration:", err)
 	}
 
 	hostIP := cfg.Preferences.HostIP
@@ -94,41 +85,36 @@ func (t *BackupCommand) Run(args []string) int {
 		log.Println("No external IP was specified, please choose an IP address for the TFTP server to listen on")
 		hostIP, err = getExternalIPAddr()
 		if err != nil {
-			log.Printf("Unable to detect external interface IP address and no HostIP was specified: %s\n", err)
-			return 1
+			log.Fatalln("Unable to detect external interface IP address and no HostIP was specified:", err)
 		}
 		log.Printf("IP %s was selected\n", hostIP)
 	}
 
 	authProviderPool, err := initAuthProviderPool(cfg.AuthProviders)
 	if err != nil {
-		log.Printf("Unable to initialize the auth provider pool: %s\n", err)
-		return 1
+		log.Fatalln("Unable to initialize the auth provider pool:", err)
 	}
 
-	deviceClasses, err := initDeviceClasses(cfg.DeviceClasses)
+	deviceClasses, err := devices.LoadDeviceClasses(cfg.DeviceClasses)
 	if err != nil {
-		log.Printf("Error initializing device classes: %s\n", err)
-		return 1
+		log.Fatalln("Error initializing device classes:", err)
 	}
 
-	devices, err := initDevices(cfg.DeviceGroups, deviceClasses, authProviderPool)
+	devices, err := devices.LoadDevices(cfg.DeviceGroups, deviceClasses, authProviderPool)
 	if err != nil {
-		log.Printf("Error initializing devices: %s\n", err)
-		return 1
+		log.Fatalln("Error initializing devices:", err)
 	}
 
 	deviceList := filterDevices(devices, deviceFilter)
 	if len(deviceList) == 0 {
-		log.Print("No devices mached the specified filter")
-		return 0
+		log.Fatalln("No devices mached the given filter")
 	}
 
-	tftpReceiver := NewTFTPReceiver(hostIP)
+	tftpReceiver := device_processor.NewTFTPReceiver(hostIP)
 	tftpReceiver.Run()
 
 	for _, device := range deviceList {
-		p := NewDeviceProcessor(device, authProviderPool, cfg.Preferences.BackupDir)
+		p := device_processor.NewDeviceProcessor(device, authProviderPool, cfg.Preferences.BackupDir)
 
 		err := p.Process(tftpReceiver)
 		if err != nil {
@@ -138,14 +124,13 @@ func (t *BackupCommand) Run(args []string) int {
 
 	tftpReceiver.Stop()
 
-	return 0
 }
 
-func filterDevices(devices map[string]*Device, filter string) map[string]*Device {
+func filterDevices(_devices map[string]*devices.Device, filter string) map[string]*devices.Device {
 
-	filteredDevices := make(map[string]*Device)
+	filteredDevices := make(map[string]*devices.Device)
 
-	for k, v := range devices {
+	for k, v := range _devices {
 		if glob.Glob(filter, k) {
 			filteredDevices[k] = v
 		}
@@ -154,17 +139,47 @@ func filterDevices(devices map[string]*Device, filter string) map[string]*Device
 	return filteredDevices
 }
 
-func (t *BackupCommand) Help() string {
-	helpText := `
-Usage: ndm backup [options] [device-filter]
-	Backs up the configuration for device matching the filter. If no filter is specified,
-	will backup all devices.
-Options:
-	--config <path>		Path to the configuation file.
-`
-	return strings.TrimSpace(helpText)
-}
+func getExternalIPAddr() (string, error) {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return "", err
+	}
 
-func (t *BackupCommand) Synopsis() string {
-	return "Backs up the configuration for the specified devices"
+	ipAddrs := []string{}
+
+	for _, iface := range ifaces {
+		if iface.Flags&net.FlagUp == 0 {
+			continue // interface down
+		}
+		if iface.Flags&net.FlagLoopback != 0 {
+			continue // loopback interface
+		}
+		addrs, err := iface.Addrs()
+		if err != nil {
+			return "", err
+		}
+		for _, addr := range addrs {
+			var ip net.IP
+			switch v := addr.(type) {
+			case *net.IPNet:
+				ip = v.IP
+			case *net.IPAddr:
+				ip = v.IP
+			}
+			if ip == nil || ip.IsLoopback() {
+				continue
+			}
+			ip = ip.To4()
+			if ip == nil {
+				continue // not an ipv4 address
+			}
+			ipAddrs = append(ipAddrs, ip.String())
+		}
+	}
+	if len(ipAddrs) == 0 {
+		return "", errors.New("Unable to determine external interface address. Are you connected to the network?")
+	}
+
+	i := prompt.Choose("Select External IP Address", ipAddrs)
+	return ipAddrs[i], nil
 }

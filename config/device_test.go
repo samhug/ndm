@@ -1,8 +1,8 @@
 package config
 
 import (
-	"github.com/samuelhug/ndm/config/auth_providers"
-	"github.com/samuelhug/ndm/config/utilities"
+	"github.com/samhug/ndm/config/auth_providers"
+	"github.com/samhug/ndm/config/utilities"
 	"github.com/stretchr/testify/require"
 	"testing"
 )

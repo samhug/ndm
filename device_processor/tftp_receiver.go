@@ -1,4 +1,4 @@
-package main
+package device_processor
 
 import (
 	"bytes"

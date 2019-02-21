@@ -1,12 +1,12 @@
-package main
+package devices
 
 import (
 	"github.com/go-errors/errors"
 	"github.com/robertkrimen/otto"
-	"github.com/samuelhug/ndm/config"
+	"github.com/samhug/ndm/config"
 )
 
-func initDeviceClassTargets(deviceClassTargetCfgs map[string]*config.BackupTargetConfig) (map[string]*DeviceClassTarget, error) {
+func LoadDeviceClassTargets(deviceClassTargetCfgs map[string]*config.BackupTargetConfig) (map[string]*DeviceClassTarget, error) {
 	deviceClassTargets := make(map[string]*DeviceClassTarget)
 
 	for name, deviceClassTargetCfg := range deviceClassTargetCfgs {
@@ -38,12 +38,12 @@ type DeviceClassTarget struct {
 	Macro *otto.Script
 }
 
-func initDeviceClasses(deviceClassCfgs map[string]*config.DeviceClassConfig) (map[string]*DeviceClass, error) {
+func LoadDeviceClasses(deviceClassCfgs map[string]*config.DeviceClassConfig) (map[string]*DeviceClass, error) {
 
 	deviceClasses := make(map[string]*DeviceClass)
 
 	for name, deviceClassCfg := range deviceClassCfgs {
-		targets, err := initDeviceClassTargets(deviceClassCfg.BackupTargets)
+		targets, err := LoadDeviceClassTargets(deviceClassCfg.BackupTargets)
 		if err != nil {
 			return nil, errors.Errorf("Unable to initialize DeviceClass(%s): %s", name, err)
 		}
@@ -58,6 +58,7 @@ func initDeviceClasses(deviceClassCfgs map[string]*config.DeviceClassConfig) (ma
 	return deviceClasses, nil
 }
 
+// DeviceClass represents a class of devices
 type DeviceClass struct {
 	Targets map[string]*DeviceClassTarget
 }

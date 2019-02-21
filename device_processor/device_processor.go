@@ -1,4 +1,4 @@
-package main
+package device_processor
 
 import (
 	"encoding/json"
@@ -7,8 +7,9 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/hashicorp/go-uuid"
 	"github.com/robertkrimen/otto"
-	"github.com/samuelhug/gexpect"
-	"github.com/samuelhug/ndm/auth"
+	"github.com/samhug/gexpect"
+	"github.com/samhug/ndm/auth"
+	"github.com/samhug/ndm/devices"
 	"golang.org/x/crypto/ssh"
 	"io"
 	"io/ioutil"
@@ -19,7 +20,7 @@ import (
 )
 
 // NewDeviceProcessor: Initializes a new DeviceProcessor object
-func NewDeviceProcessor(device *Device, authProviders *auth.ProviderPool, backupDir string) *DeviceProcessor {
+func NewDeviceProcessor(device *devices.Device, authProviders *auth.ProviderPool, backupDir string) *DeviceProcessor {
 	return &DeviceProcessor{
 		device:        device,
 		authProviders: authProviders,
@@ -42,7 +43,7 @@ func (ctx *vmCtx) Serialize() (string, error) {
 
 type DeviceProcessor struct {
 	authProviders *auth.ProviderPool
-	device        *Device
+	device        *devices.Device
 	configDir     string
 	vm            *otto.Otto
 }
@@ -156,7 +157,7 @@ func (t *DeviceProcessor) initVM(stdIn io.WriteCloser, stdOut io.Reader, ctx vmC
 	return vm, nil
 }
 
-func (t *DeviceProcessor) saveFile(backupTarget *DeviceClassTarget, file *ReceivedFile) error {
+func (t *DeviceProcessor) saveFile(backupTarget *devices.DeviceClassTarget, file *ReceivedFile) error {
 
 	dstPath := path.Join(t.configDir, t.device.Name, fmt.Sprintf("%s.conf", backupTarget.Name))
 

@@ -1,13 +1,13 @@
-package main
+package devices
 
 import (
 	"github.com/go-errors/errors"
-	"github.com/samuelhug/ndm/auth"
-	"github.com/samuelhug/ndm/config"
+	"github.com/samhug/ndm/auth"
+	"github.com/samhug/ndm/config"
 	"path"
 )
 
-func initDevices(deviceGroupCfgs map[string]*config.DeviceGroupConfig, deviceClasses map[string]*DeviceClass, authProviders *auth.ProviderPool) (map[string]*Device, error) {
+func LoadDevices(deviceGroupCfgs map[string]*config.DeviceGroupConfig, deviceClasses map[string]*DeviceClass, authProviders *auth.ProviderPool) (map[string]*Device, error) {
 
 	devices := make(map[string]*Device)
 
@@ -55,6 +55,7 @@ func initDevices(deviceGroupCfgs map[string]*config.DeviceGroupConfig, deviceCla
 	return devices, nil
 }
 
+// Device represents a network device to be managed
 type Device struct {
 	Name             string
 	Class            *DeviceClass

@@ -3,8 +3,8 @@ package config
 import (
 	"errors"
 	"github.com/hashicorp/hcl/hcl/ast"
-	"github.com/samuelhug/ndm/config/auth_providers"
-	"github.com/samuelhug/ndm/config/utilities"
+	"github.com/samhug/ndm/config/auth_providers"
+	"github.com/samhug/ndm/config/utilities"
 	"path"
 )
 

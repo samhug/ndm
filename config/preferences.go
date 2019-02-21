@@ -6,7 +6,7 @@ import (
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
 	"github.com/mitchellh/mapstructure"
-	"github.com/samuelhug/ndm/config/utilities"
+	"github.com/samhug/ndm/config/utilities"
 )
 
 // PreferencesConfig represents a preferences configuration block

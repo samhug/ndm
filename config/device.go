@@ -6,8 +6,8 @@ import (
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
 	"github.com/mitchellh/mapstructure"
-	"github.com/samuelhug/ndm/config/auth_providers"
-	"github.com/samuelhug/ndm/config/utilities"
+	"github.com/samhug/ndm/config/auth_providers"
+	"github.com/samhug/ndm/config/utilities"
 	"strings"
 )
 

@@ -1,7 +1,7 @@
 package auth_providers
 
 import (
-	"github.com/samuelhug/ndm/config/utilities"
+	"github.com/samhug/ndm/config/utilities"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
