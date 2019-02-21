@@ -4,7 +4,7 @@ go:
 install: true
 script:
 - env GO111MODULE=on go build
-- env GO111MODULE=on go test
+- env GO111MODULE=on go test ./...
 before_deploy:
 - GO111MODULE=on GOOS=linux   GOARCH=amd64 go build -o ndm_linux_amd64
 - GO111MODULE=on GOOS=linux   GOARCH=386   go build -o ndm_linux_386
