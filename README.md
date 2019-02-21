@@ -1,6 +1,6 @@
 # ndm
 
-[![Build Status](https://travis-ci.org/samuelhug/ndm.svg?branch=master)](https://travis-ci.org/samuelhug/ndm)
+[![Build Status](https://travis-ci.org/samhug/ndm.svg?branch=master)](https://travis-ci.org/samhug/ndm)
 
 ### About
 Automates the process of backing up network device configurations. This tool reads device information from a
@@ -14,7 +14,7 @@ The sample config has example expect macros for Cisco ISRs, Adtran routers, HP s
 ### Quick Example
 ```
 # Aquire & build the tool
-git clone https://github.com/samuelhug/ndm.git
+git clone https://github.com/samhug/ndm.git
 cd ndm
 go build
 go test

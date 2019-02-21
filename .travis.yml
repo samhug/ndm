@@ -23,4 +23,4 @@ deploy:
   - ndm_windows_386.exe
   on:
     tags: true
-    repo: samuelhug/ndm
+    repo: samhug/ndm
