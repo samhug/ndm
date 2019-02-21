@@ -61,7 +61,7 @@ func (t *DeviceProcessor) connect() (*ssh.Client, error) {
 
 	client, err := ssh.Dial("tcp", t.device.Address, sshClientConfig)
 	if err != nil {
-		return nil, errors.Errorf("Failed to connect to Device(%s): %s", t.device.Name, err)
+		return nil, err
 	}
 
 	return client, nil
@@ -90,13 +90,11 @@ func (t *DeviceProcessor) startShell(client *ssh.Client) (*ssh.Session, io.Write
 		ssh.TTY_OP_OSPEED: 38400, // output speed = 14.4kbaud
 	}
 
-	err = session.RequestPty("xterm", 0, 200, modes)
-	if err != nil {
+	if err = session.RequestPty("xterm", 0, 200, modes); err != nil {
 		return nil, nil, nil, errors.Errorf("Request for pty failed: %s", err)
 	}
 
-	err = session.Shell()
-	if err != nil {
+	if err = session.Shell(); err != nil {
 		return nil, nil, nil, errors.Errorf("Request for shell failed: %s", err)
 	}
 
@@ -149,8 +147,7 @@ func (t *DeviceProcessor) initVM(stdIn io.WriteCloser, stdOut io.Reader, ctx vmC
 	if err = vm.Set("_ctxRaw", ctxRaw); err != nil {
 		return nil, errors.Errorf("Failed to set _ctxRaw variable: %s", err)
 	}
-	_, err = vm.Run(`ctx = JSON.parse(_ctxRaw);`)
-	if err != nil {
+	if _, err = vm.Run(`ctx = JSON.parse(_ctxRaw);`); err != nil {
 		return nil, errors.Errorf("Failed to unserialize context variable: %s", err)
 	}
 
@@ -159,20 +156,18 @@ func (t *DeviceProcessor) initVM(stdIn io.WriteCloser, stdOut io.Reader, ctx vmC
 
 func (t *DeviceProcessor) saveFile(backupTarget *devices.DeviceClassTarget, file *ReceivedFile) error {
 
-	dstPath := path.Join(t.configDir, t.device.Name, fmt.Sprintf("%s.conf", backupTarget.Name))
-
-	dirPath, _ := path.Split(dstPath)
+	dirPath := path.Join(t.configDir, t.device.Name)
 
 	// Create the parent directory structure if needed
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
-		err = os.MkdirAll(dirPath, os.ModePerm)
-		if err != nil {
-			return errors.Errorf("Parent directory '%s' doesn't exist and an error occurred while trying to create it: %s", dirPath, err)
+		if err := os.MkdirAll(dirPath, os.ModePerm); err != nil {
+			return errors.Errorf("Unable to create directory '%s': %s", dirPath, err)
 		}
 	}
 
-	err := ioutil.WriteFile(dstPath, file.Data.Bytes(), 0644)
-	if err != nil {
+	dstPath := path.Join(dirPath, fmt.Sprintf("%s.conf", backupTarget.Name))
+
+	if err := ioutil.WriteFile(dstPath, file.Data.Bytes(), 0644); err != nil {
 		return errors.Errorf("Unable to write to file '%s': %s", dstPath, err)
 	}
 
@@ -183,8 +178,7 @@ func (t *DeviceProcessor) Process(reciever *TFTPReceiver) error {
 	for target_name, _ := range t.device.Class.Targets {
 		log.Printf("Processing backup target '%s':'%s'", t.device.Name, target_name)
 
-		err := t.ProcessTarget(target_name, reciever)
-		if err != nil {
+		if err := t.ProcessTarget(target_name, reciever); err != nil {
 			return errors.Errorf("target %s: %s", target_name, err)
 		}
 	}
@@ -230,8 +224,7 @@ func (t *DeviceProcessor) ProcessTarget(target_name string, reciever *TFTPReceiv
 		return errors.Errorf("Failed to init JavaScript VM: %s", err)
 	}
 
-	_, err = vm.Run(backupTarget.Macro)
-	if err != nil {
+	if _, err := vm.Run(backupTarget.Macro); err != nil {
 		return errors.Errorf("JavaScript VM Runtime Error: %s", err)
 	}
 
@@ -240,7 +233,7 @@ func (t *DeviceProcessor) ProcessTarget(target_name string, reciever *TFTPReceiv
 	// Wait for a maximum of 60 seconds for the file on the receive channel
 	select {
 	case err = <-reciever.GetErrorChannel():
-		log.Printf("TFTP Receiver error: %s\n", err)
+		log.Fatalln("TFTP Receiver error:", err)
 	case recvdFile = <-recvChan:
 	case <-time.After(60 * time.Second):
 		return errors.Errorf("Timed out waiting to receive file over TFTP")
@@ -251,36 +244,32 @@ func (t *DeviceProcessor) ProcessTarget(target_name string, reciever *TFTPReceiv
 		return err
 	}
 
+	log.Printf("Completed backup target: '%s':'%s'\n", t.device.Name, backupTarget.Name)
+
 	return nil
 }
 
 func ottoExpect(vm *otto.Otto, expect *gexpect.ExpectIO) error {
 
-	var err error
-
-	err = vm.Set("dbgDump", func(call otto.FunctionCall) otto.Value {
+	if err := vm.Set("dbgDump", func(call otto.FunctionCall) otto.Value {
 
 		v, _ := call.Argument(0).Export()
 		fmt.Printf(">>> dbgDump >>>:\n%v<<< dbgDump <<<\n", spew.Sdump(v))
 
 		return otto.Value{}
-	})
-	if err != nil {
+	}); err != nil {
 		return err
 	}
 
-	err = vm.Set("dbgLog", func(call otto.FunctionCall) otto.Value {
-
+	if err := vm.Set("dbgLog", func(call otto.FunctionCall) otto.Value {
 		fmt.Printf("dbgLog: %s\n", call.Argument(0).String())
-
 		return otto.Value{}
-	})
-	if err != nil {
+	}); err != nil {
 		return err
 	}
 
 	// function expect(val string) string {}
-	err = vm.Set("expect", func(call otto.FunctionCall) otto.Value {
+	if err := vm.Set("expect", func(call otto.FunctionCall) otto.Value {
 
 		// TODO: Make timeout configurable
 		err := expect.ExpectTimeout(call.Argument(0).String(), 15*time.Second)
@@ -290,12 +279,11 @@ func ottoExpect(vm *otto.Otto, expect *gexpect.ExpectIO) error {
 		}
 
 		return otto.Value{}
-	})
-	if err != nil {
+	}); err != nil {
 		return err
 	}
 
-	err = vm.Set("readLine", func(call otto.FunctionCall) otto.Value {
+	if err := vm.Set("readLine", func(call otto.FunctionCall) otto.Value {
 
 		line, err := expect.ReadLine()
 		if err != nil {
@@ -308,12 +296,11 @@ func ottoExpect(vm *otto.Otto, expect *gexpect.ExpectIO) error {
 		}
 
 		return v
-	})
-	if err != nil {
+	}); err != nil {
 		return err
 	}
 
-	err = vm.Set("sendLine", func(call otto.FunctionCall) otto.Value {
+	if err := vm.Set("sendLine", func(call otto.FunctionCall) otto.Value {
 
 		err := expect.SendLine(call.Argument(0).String())
 		if err != nil {
@@ -321,8 +308,7 @@ func ottoExpect(vm *otto.Otto, expect *gexpect.ExpectIO) error {
 		}
 
 		return otto.Value{}
-	})
-	if err != nil {
+	}); err != nil {
 		return err
 	}
 

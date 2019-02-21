@@ -54,7 +54,7 @@ func (r *TFTPReceiver) Run() {
 	r.server = tftp.NewServer(nil, r.tftpRecvHandler)
 	r.server.SetTimeout(5 * time.Second)
 
-	log.Print("Starting TFTP Server...")
+	log.Println("Starting TFTP Server...")
 
 	go func(server *tftp.Server, errChannel chan error) {
 		err := server.ListenAndServe(":69") // blocks until s.Shutdown() is called
@@ -69,7 +69,7 @@ func (r *TFTPReceiver) Stop() {
 }
 
 func (r *TFTPReceiver) tftpRecvHandler(filename string, wt io.WriterTo) error {
-	log.Print("Recieving File on TFTP Server...")
+	//log.Println("Recieving File on TFTP Server...")
 
 	var destChan chan ReceivedFile
 	found := false
@@ -104,6 +104,7 @@ func (r *TFTPReceiver) tftpRecvHandler(filename string, wt io.WriterTo) error {
 		Data: buf,
 	}
 
-	log.Printf("TFTP: %d bytes received\n", n)
+	_ = n
+	//log.Printf("TFTP: %d bytes received\n", n)
 	return nil
 }

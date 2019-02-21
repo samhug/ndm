@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 	"log"
 	"net"
+	"sync"
 )
 
 func init() {
@@ -40,8 +41,7 @@ func initAuthProviderPool(providersCfg map[string]auth_providers.AuthProviderCon
 			cfg := providerCfg.(*auth_providers.StaticAuthProviderConfig)
 			static_provider := auth.NewStaticProvider()
 			for path, auth := range cfg.Auths {
-				err = static_provider.AddAuth(path, auth.Username, auth.Password, auth.Attributes)
-				if err != nil {
+				if err = static_provider.AddAuth(path, auth.Username, auth.Password, auth.Attributes); err != nil {
 					return nil, errors.Errorf("Unable to add Auth(%s) to StaticAuthProvider(%s): %s", path, providerName, err)
 				}
 			}
@@ -59,8 +59,7 @@ func initAuthProviderPool(providersCfg map[string]auth_providers.AuthProviderCon
 		default:
 			return nil, errors.Errorf("Unsupported AuthProvider type (%s)", providerCfg.Type())
 		}
-		err = pool.RegisterProvider(providerName, provider)
-		if err != nil {
+		if err = pool.RegisterProvider(providerName, provider); err != nil {
 			return nil, errors.Errorf("Unable to register provider '%s': %s", providerName, err)
 		}
 	}
@@ -100,12 +99,12 @@ func backupMain(cmd *cobra.Command, args []string) {
 		log.Fatalln("Error initializing device classes:", err)
 	}
 
-	devices, err := devices.LoadDevices(cfg.DeviceGroups, deviceClasses, authProviderPool)
+	_devices, err := devices.LoadDevices(cfg.DeviceGroups, deviceClasses, authProviderPool)
 	if err != nil {
 		log.Fatalln("Error initializing devices:", err)
 	}
 
-	deviceList := filterDevices(devices, deviceFilter)
+	deviceList := filterDevices(_devices, deviceFilter)
 	if len(deviceList) == 0 {
 		log.Fatalln("No devices mached the given filter")
 	}
@@ -113,14 +112,23 @@ func backupMain(cmd *cobra.Command, args []string) {
 	tftpReceiver := device_processor.NewTFTPReceiver(hostIP)
 	tftpReceiver.Run()
 
+	var wg sync.WaitGroup
+
 	for _, device := range deviceList {
 		p := device_processor.NewDeviceProcessor(device, authProviderPool, cfg.Preferences.BackupDir)
 
-		err := p.Process(tftpReceiver)
-		if err != nil {
-			log.Printf("Device Processing Error '%s': %s", device.Name, err)
-		}
+		wg.Add(1)
+
+		go func(d *devices.Device) {
+			defer wg.Done()
+
+			if err := p.Process(tftpReceiver); err != nil {
+				log.Printf("Device Processing Error '%s': %s", d.Name, err)
+			}
+		}(device)
 	}
+
+	wg.Wait()
 
 	tftpReceiver.Stop()
 
