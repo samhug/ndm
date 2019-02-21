@@ -3,8 +3,8 @@ go:
 - "1.11.x"
 install: true
 script:
-  - env GO111MODULE=on go build
-  - env GO111MODULE=on go test
+- env GO111MODULE=on go build
+- env GO111MODULE=on go test
 before_deploy:
 - GO111MODULE=on GOOS=linux   GOARCH=amd64 go build -o ndm_linux_amd64
 - GO111MODULE=on GOOS=linux   GOARCH=386   go build -o ndm_linux_386
@@ -16,7 +16,7 @@ deploy:
   skip_cleanup: true
   provider: releases
   api_key:
-    secure: cIS7zkJ7lXhunywJFuHh+Tut474iDQHC+0zBt0/vim3l80y2grPnVWL3ijtvW2cCsp/NzOD5IOSoIEIvhvspJhltXhRnScDhAjYjYbV4yyOkTyf9ZUyeFzzqpf9iV/Ly5cUo63uCMlSAaOwnGbSq8NokciLfySD/Bz3KrSK86ABJsynL3nHC1+pcg3Kjz4l7Gvs8nKMJ7XWJ9eQ0PJ6I9vi4Xr5fs85JrvBWz0Y67LQWNY3VGtaQsuBTukXhV0t41KpuTgf0qfNrzwf/rQprNMQ6z5Jn9GFWV6PWTqPxglxINgI7821F5IxZ8zJWzsr77SOrBw4oLQzCZTUtZeCRJpTAhLikc8iNLdR3xFVIoJEuYm993ye7rM/LFpDc3S2gLc2lJyDtzmDvWCqsFec3z8TfQ7r1LhDRF6N7ZMZ5/IAlEEkjt1sXFukAz7ejd3vsnHRM5NvxzK0Eji2rNmywqrDTm/iGNnsBJtdaKsuoIXU1Ak/qHrFR7qQgWY1UMOT7dk5MhozS2TBfwNuvW7yinjp1NzzXcGw8IiesyqmHDBWKooBeD4rqyLCxlhhF53LH4Ad+q/vre8V2ycJA1SMSG0yjnkMJhkg7bAoCP7HlWsa59yp/VrKEZKzB96yEjtQ6zM/DhdJHVlzFtjgXttaAIVpDub0z/9P/ezjmDdTA3YY=
+    secure: WlVVhWs9FOJQnPg1RE+/rgYw+xVgL55A3aqlkkUyjYihBpQNf2FKKdHO6vX9G15pvAkRKjqvMfyjRVtnIe2Qwva/NOdZS3lB11WX+dv+AGitkag6xoPyB1xu3AtWQKX5pgtlxnKVfKRqF//+gnwq2ydT9VEzKYTZLrf37nFOG0OPYkB9ORGnrGRLR7NH1p9gvRbiEk/8QZNkgVh2tengrR6FrcyNS3SuIA2XzMCjnLB4dI0LANwgD46ygUmTk+VmClF/PGEz8CCt6hHWB+8rPwbVW7VEKlgpbwYlDyLI7qgA7RG18tLGilXhc13J8lS4SCFOi8beTu2KvcmQ8scI9f9OlD8izdZ6W+9Ma/moJ1AXLgDLANHGRzYCOe8sF4oJBIySgkGa4DY6Wsy9dIQ/c5FDnpAOA4KJp3jKL15X68wfAbI68PjbqmZXYvvCQvggLhlYYxFkvUOhD0IJaVI5x2wzZJSlUZKZJCO6ToDTiPBpPjGp9vAJvVZDHSoYWaPn0IS8GCeg5JotdwPeOMmBSetMGQ5rFmen9r0DN9aOY+hcrGzoD3MeTkbp7RfsJlcUXknieEsIQvfObcj2S9USYvGK1Omv53zTUCrQXzPgGP7q696ev0ER83HMpIUNj1/8ohevruDsiEzDL/DNb9BmVCZO2Kd+C4DkPChdli823pE=
   file:
   - ndm_linux_amd64
   - ndm_linux_386
